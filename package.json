@@ -1,0 +1,33 @@
+{
+  "name": "via",
+  "version": "1.1.0",
+  "description": "Obsidian Git-like Google Drive version control plugin via Rclone.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup --config rollup.config.js --environment BUILD:production",
+    "dev": "rollup --config rollup.config.js -w"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "git",
+    "google-drive",
+    "rclone",
+    "sync"
+  ],
+  "author": "Himanshu Lodhi",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-alias": "^6.0.0",
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/node": "^20.17.9",
+    "obsidian": "^1.14.4",
+    "rollup": "^4.66.0",
+    "rollup-plugin-copy": "^3.5.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3"
+  }
+}

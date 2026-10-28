@@ -1,0 +1,25 @@
+{
+  "js/ts.updateImportsOnFileMove.enabled": "always",
+  "markdown.updateLinksOnFileMove.enabled": "always",
+  "files.eol": "\n",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/coverage": true,
+    "**/.git": true
+  },
+
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/coverage/**": true,
+    "**/.git/**": true
+  },
+
+  "files.exclude": {
+    "**/coverage": true,
+    "**/dist": true
+  },
+
+  "js/ts.tsserver.maxMemory": 4096
+}

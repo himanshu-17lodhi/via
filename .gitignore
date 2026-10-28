@@ -1,0 +1,33 @@
+.DS_Store
+
+# Intellij
+*.iml
+.idea
+
+# npm
+node_modules
+
+# build
+main.js
+*.js.map
+dist
+
+# icons generation
+build
+remixicons
+fontawesome
+devicon
+
+# obsidian
+data.json
+# env.js           --require in tag/release
+
+# Vitepress
+docs/.vitepress/dist
+docs/.vitepress/cache
+
+# Vitest
+coverage
+
+structure.txt
+.zip

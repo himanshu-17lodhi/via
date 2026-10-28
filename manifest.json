@@ -1,0 +1,9 @@
+{
+  "id": "via",
+  "name": "Via",
+  "version": "1.0.0",
+  "minAppVersion": "1.15.0",
+  "description": "Git-style Google Drive version control via Rclone.",
+  "author": "Himanshu Lodhi",
+  "isDesktopOnly": true
+}

@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+
+    "paths": {
+      "@/*": ["src/*"],
+      "@tests/*": ["tests/*"]
+    },
+
+    "inlineSourceMap": true,
+    "inlineSources": true,
+
+    "allowSyntheticDefaultImports": true,
+
+    "module": "ESNext",
+    "moduleResolution": "node",
+
+    "target": "ES2021",
+
+    "lib": ["ES2021", "DOM"],
+
+    "noImplicitAny": true,
+
+    "importHelpers": true,
+
+    "skipLibCheck": true
+  },
+
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
+
+  "exclude": ["coverage", "dist", "node_modules"]
+}
