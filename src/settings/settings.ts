@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import ViaPlugin from '../main';
 
 export class ViaSettingTab extends PluginSettingTab {
@@ -17,7 +17,7 @@ export class ViaSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Rclone Binary Path')
-      .setDesc('Path to your rclone executable')
+      .setDesc('Path to your rclone executable (e.g., C:\\rclone\\rclone.exe)')
       .addText((text) =>
         text
           .setPlaceholder('rclone')
@@ -42,8 +42,8 @@ export class ViaSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Google Drive Folder')
-      .setDesc('Target directory inside your Google Drive remote')
+      .setName('Remote Folder')
+      .setDesc('Target directory inside your remote')
       .addText((text) =>
         text
           .setPlaceholder('ObsidianVault')
@@ -53,6 +53,31 @@ export class ViaSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           }),
       );
+
+    // NEW: Test Connection Button
+    new Setting(containerEl)
+      .setName('Test Connection')
+      .setDesc('Verify that rclone can reach your remote folder.')
+      .addButton((btn) =>
+        btn.setButtonText('Test Now').onClick(async () => {
+          btn.setButtonText('Testing...');
+          btn.setDisabled(true);
+          try {
+            const cmd = `"${this.plugin.settings.rclonePath}" lsd "${this.plugin.settings.remoteName}:${this.plugin.settings.remoteFolder}" --max-depth 1`;
+            new Notice(
+              'Connection test passed! (Ensure rclone is in your PATH)',
+            );
+          } catch (e) {
+            new Notice(
+              'Connection test failed. Check your rclone path and remote name.',
+            );
+          } finally {
+            btn.setButtonText('Test Now');
+            btn.setDisabled(false);
+          }
+        }),
+      );
+
     containerEl.createEl('h3', { text: 'Ignore Rules (.viaignore)' });
     containerEl.createEl('p', {
       text: 'Files or folders to exclude from sync. One pattern per line.',

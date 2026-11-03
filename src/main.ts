@@ -58,9 +58,8 @@ export default class ViaPlugin extends Plugin {
     this.statusBarItem = this.addStatusBarItem();
     this.statusBarItem.setText('via: ready');
     this.statusBarItem.onclick = () =>
-      this.app.commands.executeCommandById('via:via-terminal');
+      (this.app as any).commands.executeCommandById('via:via-terminal');
 
-    // Auto-refresh status bar every 30 seconds
     this.registerInterval(
       window.setInterval(async () => {
         const changes = await this.statusEngine.compute();

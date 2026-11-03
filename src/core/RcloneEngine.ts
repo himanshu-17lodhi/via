@@ -1,6 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { CommandResult, SyncStatus, FileState } from '../types';
+import { SyncStatus, FileState } from '../types';
 
 const execAsync = promisify(exec);
 
@@ -104,7 +104,7 @@ export class RcloneEngine {
           exitCode: 0,
           summary: {
             files: match ? parseInt(match[1]) : 0,
-            percent: match ? `${match[2]}%` : '0%',
+            percentage: match ? `${match[2]}%` : '0%',
           },
         };
       }
@@ -197,12 +197,5 @@ export interface CommandResult {
   output: string;
   statusData?: SyncStatus[];
   exitCode: number;
-  summary?: { files: number; bytes: string }; // NEW
-}
-
-export interface CommandResult {
-  output: string;
-  statusData?: SyncStatus[];
-  exitCode: number;
-  summary?: { files: number; bytes: string }; // NEW
+  summary?: { files: number; percentage: string }; // NEW
 }

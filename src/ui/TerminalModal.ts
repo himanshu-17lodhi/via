@@ -28,21 +28,11 @@ export class ViaTerminalModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
 
-    this.modalEl.addClass('via-custom-modal');
+    this.modalEl.addClass('via-terminal-modal');
     const closeBtn = this.modalEl.querySelector(
       '.modal-close-button',
     ) as HTMLElement;
     if (closeBtn) closeBtn.style.display = 'none';
-
-    this.modalEl.setAttr(
-      'style',
-      `
-      background: rgba(241, 245, 249, 0.4) !important;
-      backdrop-filter: blur(8px) !important;
-      border: none !important;
-      box-shadow: none !important;
-    `,
-    );
 
     this.buildLayout();
     this.resetTerminal();
@@ -50,115 +40,55 @@ export class ViaTerminalModal extends Modal {
   }
 
   private buildLayout() {
-    this.container = this.contentEl.createDiv();
-    this.container.setAttr(
-      'style',
-      `
-      display: flex; flex-direction: column;
-      background: #ffffff; color: #334155;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
-      border: 1px solid #e2e8f0; border-radius: 12px;
-      overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    `,
-    );
+    this.container = this.contentEl.createDiv({
+      cls: 'via-terminal-container',
+    });
     this.applyWindowSize();
 
-    const header = this.container.createDiv();
-    header.setAttr(
-      'style',
-      `
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0; user-select: none;
-    `,
-    );
+    // Header
+    const header = this.container.createDiv({ cls: 'via-terminal-header' });
 
-    const dots = header.createDiv();
-    dots.setAttr('style', 'display: flex; gap: 8px;');
-
-    this.createDot(dots, '#ef4444', () => this.close());
-    this.createDot(dots, '#f59e0b', () => this.resetTerminal());
-    this.createDot(dots, '#10b981', () => {
+    const dots = header.createDiv({ cls: 'via-terminal-dots' });
+    this.createDot(dots, 'close', () => this.close());
+    this.createDot(dots, 'reset', () => this.resetTerminal());
+    this.createDot(dots, 'fullscreen', () => {
       this.isFullScreen = !this.isFullScreen;
       this.applyWindowSize();
     });
 
-    const title = header.createDiv({ text: 'Via Terminal' });
-    title.setAttr(
-      'style',
-      'color: #94a3b8; font-size: 12px; font-weight: 500; flex-grow: 1; text-align: center; margin-left: -46px;',
-    );
-    header.createDiv().setAttr('style', 'width: 46px;');
+    header.createDiv({ text: 'Via Terminal', cls: 'via-terminal-title' });
+    header.createDiv().setAttr('style', 'width: 46px;'); // Spacer
 
-    this.outputEl = this.container.createDiv();
-    this.outputEl.setAttr(
-      'style',
-      `
-      flex-grow: 1; padding: 20px 24px; overflow-y: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 13px; line-height: 1.6; color: #475569;
-      background: #ffffff;
-    `,
-    );
+    // Output area
+    this.outputEl = this.container.createDiv({ cls: 'via-terminal-output' });
 
-    const inputSection = this.container.createDiv();
-    inputSection.setAttr(
-      'style',
-      'padding: 16px 24px; background: #ffffff; border-top: 1px solid #f1f5f9;',
-    );
-
-    const inputWrapper = inputSection.createDiv();
-    inputWrapper.setAttr(
-      'style',
-      `
-      display: flex; align-items: center;
-      background: #f8fafc; border: 1px solid #e2e8f0;
-      border-radius: 8px; padding: 12px 16px;
-      transition: border-color 0.2s;
-    `,
-    );
-
-    const promptSymbol = inputWrapper.createSpan({ text: '❯' });
-    promptSymbol.setAttr(
-      'style',
-      'color: #3b82f6; font-weight: bold; margin-right: 12px; font-size: 16px;',
-    );
-
-    this.inputEl = inputWrapper.createEl('input', { type: 'text' });
-    this.inputEl.setAttr(
-      'style',
-      `
-      flex-grow: 1; background: transparent; color: #0f172a;
-      border: none; outline: none; font-family: ui-monospace, monospace;
-      font-size: 13.5px; padding: 0; box-shadow: none;
-    `,
-    );
-
-    const footer = inputSection.createDiv();
-    footer.setAttr(
-      'style',
-      'display: flex; margin-top: 12px; font-size: 11px; align-items: center; gap: 8px; font-weight: 500;',
-    );
-
-    const localLabel = footer.createSpan({ text: '● Local' });
-    localLabel.setAttr('style', 'color: #10b981;');
-
-    const arrowLabel = footer.createSpan({ text: '⟷' });
-    arrowLabel.setAttr('style', 'color: #cbd5e1;');
-
-    const remoteLabel = footer.createSpan({
-      text: `${this.plugin.settings.remoteName}/${this.plugin.settings.remoteFolder}`,
+    // Input area
+    const inputSection = this.container.createDiv({
+      cls: 'via-terminal-input-section',
     });
-    remoteLabel.setAttr('style', 'color: #94a3b8;');
+    const inputWrapper = inputSection.createDiv({
+      cls: 'via-terminal-input-wrapper',
+    });
+
+    inputWrapper.createSpan({ text: '❯', cls: 'via-terminal-prompt-symbol' });
+
+    this.inputEl = inputWrapper.createEl('input', {
+      type: 'text',
+      cls: 'via-terminal-input',
+    });
+
+    // Footer
+    const footer = inputSection.createDiv({ cls: 'via-terminal-footer' });
+    footer.createSpan({ text: '● Local', cls: 'via-footer-local' });
+    footer.createSpan({ text: '⟷', cls: 'via-footer-arrow' });
+    footer.createSpan({
+      text: `${this.plugin.settings.remoteName}/${this.plugin.settings.remoteFolder}`,
+      cls: 'via-footer-remote',
+    });
   }
 
-  private createDot(parent: HTMLElement, color: string, onClick: () => void) {
-    const dot = parent.createDiv();
-    dot.setAttr(
-      'style',
-      `width: 12px; height: 12px; border-radius: 50%; background: ${color}; cursor: pointer; border: 1px solid rgba(0,0,0,0.1);`,
-    );
+  private createDot(parent: HTMLElement, type: string, onClick: () => void) {
+    const dot = parent.createDiv({ cls: `via-terminal-dot ${type}` });
     dot.onclick = onClick;
   }
 
@@ -236,7 +166,7 @@ export class ViaTerminalModal extends Modal {
           resultBlock.setText(`Error: Commit '${commitId}' not found.`);
           resultBlock.setAttr(
             'style',
-            'color: #ef4444; font-family: ui-monospace, monospace;',
+            'color: var(--text-error); font-family: var(--font-monospace);',
           );
         } else {
           const confirmMsg = `This will overwrite local files and delete untracked files to match the snapshot from commit [${commitId}].\n\nAre you sure you want to proceed?`;
@@ -252,7 +182,7 @@ export class ViaTerminalModal extends Modal {
                 resultBlock.setText('Restore cancelled.');
                 resultBlock.setAttr(
                   'style',
-                  'color: #94a3b8; font-style: italic;',
+                  'color: var(--text-muted); font-style: italic;',
                 );
                 return;
               }
@@ -277,7 +207,7 @@ export class ViaTerminalModal extends Modal {
               });
               successDiv.setAttr(
                 'style',
-                'color: #10b981; font-weight: 600; font-size: 13.5px; margin-bottom: 4px; font-family: -apple-system, sans-serif;',
+                'color: var(--text-success); font-weight: 600; font-size: 13.5px; margin-bottom: 4px;',
               );
 
               const infoDiv = resultBlock.createDiv({
@@ -285,7 +215,7 @@ export class ViaTerminalModal extends Modal {
               });
               infoDiv.setAttr(
                 'style',
-                'color: #64748b; font-size: 13px; font-family: -apple-system, sans-serif;',
+                'color: var(--text-muted); font-size: 13px;',
               );
 
               const hintDiv = resultBlock.createDiv({
@@ -293,7 +223,7 @@ export class ViaTerminalModal extends Modal {
               });
               hintDiv.setAttr(
                 'style',
-                'color: #f59e0b; font-size: 12px; margin-top: 8px; font-family: -apple-system, sans-serif;',
+                'color: var(--color-orange); font-size: 12px; margin-top: 8px;',
               );
             },
           ).open();
@@ -304,7 +234,6 @@ export class ViaTerminalModal extends Modal {
         resultBlock.empty();
         this.renderStatusTree(resultBlock, changes);
       } else {
-        // 1. AUTO-SNAPSHOT
         if (['push', 'pull', 'sync'].includes(sub)) {
           const timestamp = new Date().toLocaleString();
           await this.plugin.snapshotEngine.commit(
@@ -313,7 +242,6 @@ export class ViaTerminalModal extends Modal {
           );
         }
 
-        // 2. EXECUTE COMMAND
         const result = await this.engine.execute(sub, this.vaultPath);
         clearInterval(spinner);
         resultBlock.empty();
@@ -332,7 +260,7 @@ export class ViaTerminalModal extends Modal {
           });
           successDiv.setAttr(
             'style',
-            'color: #10b981; font-weight: 600; font-size: 13.5px; margin-bottom: 4px; font-family: -apple-system, sans-serif;',
+            'color: var(--text-success); font-weight: 600; font-size: 13.5px; margin-bottom: 4px;',
           );
 
           const statsDiv = resultBlock.createDiv({
@@ -340,7 +268,7 @@ export class ViaTerminalModal extends Modal {
           });
           statsDiv.setAttr(
             'style',
-            'color: #64748b; font-size: 13px; font-family: -apple-system, sans-serif;',
+            'color: var(--text-muted); font-size: 13px;',
           );
 
           if (result.output.includes('ERROR')) {
@@ -349,14 +277,13 @@ export class ViaTerminalModal extends Modal {
             });
             errorDiv.setAttr(
               'style',
-              'color: #ef4444; font-size: 12px; margin-top: 8px; font-family: -apple-system, sans-serif;',
+              'color: var(--text-error); font-size: 12px; margin-top: 8px;',
             );
           }
         } else {
           resultBlock.setText(result.output);
         }
 
-        // 3. UPDATE MANIFEST AFTER SUCCESS
         if (result.exitCode === 0 && ['push', 'pull', 'sync'].includes(sub)) {
           await this.statusEngine.updateManifestFromLocal();
           const manifestMsg = this.outputEl.createDiv({
@@ -364,7 +291,7 @@ export class ViaTerminalModal extends Modal {
           });
           manifestMsg.setAttr(
             'style',
-            'color: #94a3b8; margin-top: 12px; font-size: 11px; font-family: -apple-system, sans-serif;',
+            'color: var(--text-faint); margin-top: 12px; font-size: 11px;',
           );
         }
       }
@@ -372,7 +299,7 @@ export class ViaTerminalModal extends Modal {
       clearInterval(spinner);
       resultBlock.empty();
       resultBlock.setText(`Error: ${err.message}`);
-      resultBlock.setAttr('style', 'color: #ef4444;');
+      resultBlock.setAttr('style', 'color: var(--text-error);');
     }
 
     this.outputEl.scrollTop = this.outputEl.scrollHeight;
@@ -380,27 +307,15 @@ export class ViaTerminalModal extends Modal {
   }
 
   private renderPromptBlock(sub: string) {
-    const block = this.outputEl.createDiv();
-    block.setAttr(
-      'style',
-      'margin-top: 24px; margin-bottom: 8px; display: flex; gap: 8px; align-items: center;',
-    );
-    const promptIcon = block.createSpan({ text: '❯' });
-    promptIcon.setAttr(
-      'style',
-      'color: #3b82f6; font-weight: bold; font-size: 16px;',
-    );
-    const promptText = block.createSpan({ text: `via ${sub}` });
-    promptText.setAttr(
-      'style',
-      'color: #0f172a; font-weight: 500; font-family: ui-monospace, monospace; font-size: 13.5px;',
-    );
+    const block = this.outputEl.createDiv({ cls: 'via-prompt-block' });
+    block.createSpan({ text: '❯', cls: 'via-terminal-prompt-symbol' });
+    block.createSpan({ text: `via ${sub}`, cls: 'via-prompt-text' });
   }
 
   private startSpinner(container: HTMLElement): number {
     const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     let i = 0;
-    container.setAttr('style', 'color: #94a3b8; margin-top: 4px;');
+    container.setAttr('style', 'color: var(--text-muted); margin-top: 4px;');
     return window.setInterval(() => {
       container.setText(`${frames[i++ % frames.length]} Running...`);
       this.outputEl.scrollTop = this.outputEl.scrollHeight;
@@ -409,13 +324,10 @@ export class ViaTerminalModal extends Modal {
 
   private renderStatusTree(container: HTMLElement, data: SyncStatus[]) {
     if (data.length === 0) {
-      const cleanMsg = container.createDiv({
+      container.createDiv({
         text: '✨ Working tree clean. Everything is synced.',
+        cls: 'via-status-clean',
       });
-      cleanMsg.setAttr(
-        'style',
-        'color: #10b981; font-style: italic; margin-top: 8px;',
-      );
       return;
     }
 
@@ -429,85 +341,57 @@ export class ViaTerminalModal extends Modal {
       parent: HTMLElement,
       symbol: string,
       path: string,
-      color: string,
+      type: 'added' | 'modified' | 'deleted',
     ) => {
-      const row = parent.createDiv();
-      row.setAttr(
-        'style',
-        `
-        display: flex; gap: 8px; align-items: baseline; 
-        padding: 6px 10px; border-radius: 6px; margin-bottom: 3px;
-        background: #f8fafc; border: 1px solid #f1f5f9;
-      `,
-      );
-      const icon = row.createSpan({ text: symbol });
-      icon.setAttr(
-        'style',
-        `color: ${color}; font-weight: bold; font-family: ui-monospace, monospace;`,
-      );
-      const text = row.createSpan({ text: path });
-      text.setAttr(
-        'style',
-        'color: #334155; font-family: ui-monospace, monospace; font-size: 12.5px; word-break: break-all;',
-      );
+      const row = parent.createDiv({ cls: 'via-file-row' });
+      row.createSpan({ text: symbol, cls: `via-file-icon ${type}` });
+      row.createSpan({ text: path, cls: 'via-file-text' });
     };
 
     if (groups.added.length) {
-      const addedHeader = container.createDiv({
+      container.createDiv({
         text: 'Added (New files to sync):',
+        cls: 'via-status-header added',
       });
-      addedHeader.setAttr(
-        'style',
-        'color: #10b981; font-weight: 600; margin-top: 12px; margin-bottom: 6px; font-size: 13px; font-family: -apple-system, sans-serif;',
-      );
       groups.added.forEach((f) =>
-        createFileRow(container, '+', f.path, '#10b981'),
+        createFileRow(container, '+', f.path, 'added'),
       );
     }
     if (groups.modified.length) {
-      const modHeader = container.createDiv({ text: 'Modified:' });
-      modHeader.setAttr(
-        'style',
-        'color: #f59e0b; font-weight: 600; margin-top: 12px; margin-bottom: 6px; font-size: 13px; font-family: -apple-system, sans-serif;',
-      );
+      container.createDiv({
+        text: 'Modified:',
+        cls: 'via-status-header modified',
+      });
       groups.modified.forEach((f) =>
-        createFileRow(container, '*', f.path, '#f59e0b'),
+        createFileRow(container, '*', f.path, 'modified'),
       );
     }
     if (groups.deleted.length) {
-      const delHeader = container.createDiv({ text: 'Deleted:' });
-      delHeader.setAttr(
-        'style',
-        'color: #ef4444; font-weight: 600; margin-top: 12px; margin-bottom: 6px; font-size: 13px; font-family: -apple-system, sans-serif;',
-      );
+      container.createDiv({
+        text: 'Deleted:',
+        cls: 'via-status-header deleted',
+      });
       groups.deleted.forEach((f) =>
-        createFileRow(container, '-', f.path, '#ef4444'),
+        createFileRow(container, '-', f.path, 'deleted'),
       );
     }
   }
 
   private renderDiff(container: HTMLElement, raw: string) {
     for (const line of raw.split('\n')) {
-      const div = container.createDiv();
-      div.setAttr(
-        'style',
-        'font-family: ui-monospace, monospace; line-height: 1.5; padding: 2px 8px; border-radius: 4px; margin-bottom: 2px;',
-      );
+      const div = container.createDiv({ cls: 'via-diff-line' });
       if (line.startsWith('+')) {
         div.setText(line);
-        div.style.color = '#059669';
-        div.style.background = '#ecfdf5';
+        div.addClass('via-diff-add');
       } else if (line.startsWith('-')) {
         div.setText(line);
-        div.style.color = '#dc2626';
-        div.style.background = '#fef2f2';
+        div.addClass('via-diff-del');
       } else if (line.startsWith('*')) {
         div.setText(line);
-        div.style.color = '#d97706';
-        div.style.background = '#fffbeb';
+        div.addClass('via-diff-mod');
       } else {
         div.setText(line);
-        div.style.color = '#64748b';
+        div.style.color = 'var(--text-muted)';
       }
     }
   }
@@ -516,159 +400,118 @@ export class ViaTerminalModal extends Modal {
     const success = container.createDiv({ text: `✓ Committed [${commit.id}]` });
     success.setAttr(
       'style',
-      'color: #10b981; font-weight: 600; margin-bottom: 8px; font-family: -apple-system, sans-serif;',
+      'color: var(--text-success); font-weight: 600; margin-bottom: 8px;',
     );
+
     const msgLine = container.createDiv({
       text: `Message: "${commit.message}"`,
     });
-    msgLine.setAttr(
-      'style',
-      'color: #475569; font-size: 13px; font-family: -apple-system, sans-serif;',
-    );
+    msgLine.setAttr('style', 'color: var(--text-normal); font-size: 13px;');
+
     const countLine = container.createDiv({
       text: `${commit.fileCount} files tracked`,
     });
     countLine.setAttr(
       'style',
-      'color: #94a3b8; font-size: 12px; margin-top: 4px; font-family: -apple-system, sans-serif;',
+      'color: var(--text-muted); font-size: 12px; margin-top: 4px;',
     );
   }
 
   private renderLog(container: HTMLElement, commits: Commit[]) {
     if (commits.length === 0) {
-      const empty = container.createDiv({
+      container.createDiv({
         text: 'No commits yet. Try: via commit "initial snapshot"',
+        cls: 'via-status-clean',
       });
-      empty.setAttr(
-        'style',
-        'color: #94a3b8; font-style: italic; font-family: -apple-system, sans-serif;',
-      );
       return;
     }
-    const header = container.createDiv({
+    container.createDiv({
       text: `Commit History (${commits.length})`,
+      cls: 'via-help-title',
     });
-    header.setAttr(
-      'style',
-      'color: #0f172a; font-weight: 600; margin-bottom: 12px; font-family: -apple-system, sans-serif;',
-    );
 
     for (const commit of commits) {
-      const entry = container.createDiv();
+      const entry = container.createDiv({ cls: 'via-conflict-card' }); // Reusing some styling
       entry.setAttr(
         'style',
-        'margin-bottom: 16px; padding-left: 12px; border-left: 2px solid #e2e8f0;',
-      );
-      const idLine = container.createDiv();
-      idLine.setAttr(
-        'style',
-        'display: flex; gap: 8px; align-items: baseline; font-family: -apple-system, sans-serif;',
+        'border-left-color: var(--interactive-accent); background: var(--background-secondary); margin-bottom: 16px;',
       );
 
-      const idSpan = idLine.createSpan({ text: commit.id });
-      idSpan.setAttr(
-        'style',
-        'color: #3b82f6; font-weight: 600; font-family: ui-monospace, monospace; font-size: 12px;',
-      );
-
-      const dateSpan = idLine.createSpan({
+      const idLine = entry.createDiv({ cls: 'via-terminal-footer' });
+      idLine.createSpan({ text: commit.id, cls: 'via-help-cmd' });
+      idLine.createSpan({
         text: new Date(commit.timestamp).toLocaleString(),
+        cls: 'via-footer-arrow',
       });
-      dateSpan.setAttr('style', 'color: #94a3b8; font-size: 11px;');
 
-      const msgDiv = entry.createDiv({ text: commit.message });
-      msgDiv.setAttr(
-        'style',
-        'color: #0f172a; font-size: 13px; margin-top: 4px; font-family: -apple-system, sans-serif;',
-      );
+      const msgDiv = entry.createDiv({
+        text: commit.message,
+        cls: 'via-file-text',
+      });
+      msgDiv.setAttr('style', 'margin-top: 4px;');
 
-      const countDiv = entry.createDiv({ text: `${commit.fileCount} files` });
-      countDiv.setAttr(
-        'style',
-        'color: #94a3b8; font-size: 11px; margin-top: 2px; font-family: -apple-system, sans-serif;',
-      );
+      const countDiv = entry.createDiv({
+        text: `${commit.fileCount} files`,
+        cls: 'via-footer-remote',
+      });
     }
   }
 
-  // FEATURE 3: INTERACTIVE CONFLICT RESOLUTION
   private renderConflicts(container: HTMLElement, conflicts: ConflictResult[]) {
     if (conflicts.length === 0) {
-      const clean = container.createDiv({
+      container.createDiv({
         text: '✓ No conflicts detected. Safe to push.',
+        cls: 'via-status-clean',
       });
-      clean.setAttr(
-        'style',
-        'color: #10b981; font-weight: 500; font-family: -apple-system, sans-serif;',
-      );
       return;
     }
 
-    const header = container.createDiv({
+    container.createDiv({
       text: `⚠ ${conflicts.length} conflict(s) detected:`,
+      cls: 'via-status-header deleted',
     });
-    header.setAttr(
-      'style',
-      'color: #ef4444; font-weight: 600; margin-bottom: 12px; font-family: -apple-system, sans-serif;',
-    );
 
     for (const conflict of conflicts) {
-      const entry = container.createDiv();
-      entry.setAttr(
-        'style',
-        'margin-bottom: 12px; padding: 12px 14px; background: #fef2f2; border-left: 3px solid #ef4444; border-radius: 4px;',
-      );
+      const entry = container.createDiv({ cls: 'via-conflict-card' });
 
-      const pathDiv = entry.createDiv({ text: conflict.path });
-      pathDiv.setAttr(
-        'style',
-        'color: #dc2626; font-family: ui-monospace, monospace; font-size: 12px; font-weight: 500;',
-      );
+      entry
+        .createDiv({ text: conflict.path, cls: 'via-file-text' })
+        .setAttr('style', 'color: var(--text-error);');
 
-      const reasonDiv = entry.createDiv({ text: conflict.reason });
-      reasonDiv.setAttr(
-        'style',
-        'color: #7f1d1d; font-size: 11px; margin-top: 4px; font-family: -apple-system, sans-serif;',
-      );
+      entry
+        .createDiv({ text: conflict.reason, cls: 'via-help-desc' })
+        .setAttr(
+          'style',
+          'color: var(--text-muted); font-size: 11px; margin-top: 4px;',
+        );
 
-      // Interactive Buttons
-      const btnContainer = entry.createDiv();
-      btnContainer.setAttr(
-        'style',
-        'display: flex; gap: 8px; margin-top: 10px;',
-      );
+      const btnContainer = entry.createDiv({ cls: 'via-terminal-footer' });
+      btnContainer.setAttr('style', 'margin-top: 10px;');
 
       const keepLocalBtn = btnContainer.createEl('button', {
         text: 'Keep Local',
+        cls: 'via-btn keep-local',
       });
-      keepLocalBtn.setAttr(
-        'style',
-        'font-size: 11px; padding: 4px 8px; cursor: pointer; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; font-weight: 500;',
-      );
       keepLocalBtn.onclick = async () => {
         new Notice(`Forcing local version of ${conflict.path} to remote...`);
-        // Force push this specific file to remote
         await this.engine.execute(
           `rclone copy "${conflict.path}" "${this.plugin.settings.remoteName}:${this.plugin.settings.remoteFolder}/${conflict.path}"`,
           this.vaultPath,
         );
-        entry.setAttr('style', 'display: none;'); // Hide from list after action
+        entry.style.display = 'none';
       };
 
       const keepRemoteBtn = btnContainer.createEl('button', {
         text: 'Keep Remote',
+        cls: 'via-btn keep-remote',
       });
-      keepRemoteBtn.setAttr(
-        'style',
-        'font-size: 11px; padding: 4px 8px; cursor: pointer; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; border-radius: 4px; font-weight: 500;',
-      );
       keepRemoteBtn.onclick = async () => {
         new Notice(`Pulling remote version of ${conflict.path}...`);
-        // Force pull this specific file from remote
         await this.engine.execute(
           `rclone copy "${this.plugin.settings.remoteName}:${this.plugin.settings.remoteFolder}/${conflict.path}" "${conflict.path}"`,
           this.vaultPath,
         );
-        entry.setAttr('style', 'display: none;'); // Hide from list after action
+        entry.style.display = 'none';
       };
     }
   }
@@ -693,31 +536,19 @@ export class ViaTerminalModal extends Modal {
     const wrapper = container.createDiv();
     wrapper.setAttr(
       'style',
-      'display: flex; flex-direction: column; gap: 2px; margin-top: 8px; font-family: -apple-system, sans-serif;',
+      'display: flex; flex-direction: column; gap: 2px; margin-top: 8px;',
     );
-    const title = wrapper.createDiv({ text: 'Available Commands' });
-    title.setAttr(
-      'style',
-      'color: #0f172a; font-weight: 600; margin-bottom: 8px; font-size: 13px;',
-    );
+    wrapper.createDiv({ text: 'Available Commands', cls: 'via-help-title' });
 
     commands.forEach((c) => {
-      const row = wrapper.createDiv();
-      row.setAttr(
-        'style',
-        'display: flex; gap: 16px; padding: 4px 0; align-items: center;',
-      );
-      const cmdEl = row.createDiv({ text: c.cmd });
-      cmdEl.setAttr(
-        'style',
-        'color: #3b82f6; font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 500; width: 140px; flex-shrink: 0;',
-      );
-      const descEl = row.createDiv({ text: c.desc });
-      descEl.setAttr('style', 'color: #64748b; font-size: 13px;');
+      const row = wrapper.createDiv({ cls: 'via-help-row' });
+      row.createDiv({ text: c.cmd, cls: 'via-help-cmd' });
+      row.createDiv({ text: c.desc, cls: 'via-help-desc' });
     });
   }
 
   private applyWindowSize() {
+    if (!this.container) return;
     if (this.isFullScreen) {
       this.container.style.width = '100vw';
       this.container.style.height = '100vh';
@@ -734,28 +565,17 @@ export class ViaTerminalModal extends Modal {
   private resetTerminal() {
     this.outputEl.empty();
     const welcome = this.outputEl.createDiv();
-    welcome.setAttr(
-      'style',
-      'display: flex; flex-direction: column; gap: 8px; padding-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;',
-    );
-    const title = welcome.createDiv({ text: 'Via Version Control' });
-    title.setAttr(
-      'style',
-      'color: #0f172a; font-weight: 700; font-size: 18px; margin-bottom: 8px; letter-spacing: -0.5px;',
-    );
+    welcome.createDiv({
+      text: 'Via Version Control',
+      cls: 'via-welcome-title',
+    });
 
     const createCheckLine = (text: string, highlight?: string) => {
-      const line = welcome.createDiv();
-      line.setAttr(
-        'style',
-        'display: flex; align-items: center; gap: 8px; color: #475569; font-size: 13px;',
-      );
-      const check = line.createSpan({ text: '✓' });
-      check.setAttr('style', 'color: #10b981; font-weight: bold;');
+      const line = welcome.createDiv({ cls: 'via-welcome-line' });
+      line.createSpan({ text: '✓', cls: 'via-welcome-check' });
       line.createSpan({ text: text });
       if (highlight) {
-        const hlSpan = line.createSpan({ text: highlight });
-        hlSpan.setAttr('style', 'color: #3b82f6; font-weight: 500;');
+        line.createSpan({ text: highlight, cls: 'via-welcome-remote' });
       }
     };
 
@@ -767,8 +587,11 @@ export class ViaTerminalModal extends Modal {
     );
 
     const hint = welcome.createDiv();
-    hint.setAttr('style', 'margin-top: 16px; color: #94a3b8; font-size: 12px;');
-    hint.innerHTML = `Type <span style="color: #0f172a; background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-family: ui-monospace, monospace; font-weight: 500; border: 1px solid #e2e8f0;">via help</span>`;
+    hint.setAttr(
+      'style',
+      'margin-top: 16px; color: var(--text-muted); font-size: 12px;',
+    );
+    hint.innerHTML = `Type <span style="color: var(--text-normal); background: var(--background-secondary); padding: 3px 8px; border-radius: 6px; font-family: var(--font-monospace); font-weight: 500; border: 1px solid var(--background-modifier-border);">via help</span>`;
   }
 
   onClose() {
