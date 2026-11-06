@@ -284,3 +284,99 @@
   border-left: 3px solid var(--color-red);
   border-radius: 4px;
 }
+
+.via-radial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: via-fade-in 0.2s forwards;
+}
+
+.via-radial-dial {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: var(--background-primary);
+  border: 2px solid var(--background-modifier-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.via-radial-center {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--background-secondary);
+  border: 2px solid var(--interactive-accent);
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  user-select: none;
+  z-index: 10;
+  transition: transform 0.2s;
+}
+
+.via-radial-dial:hover .via-radial-center {
+  transform: scale(1.05);
+}
+
+.via-radial-item {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.15s,
+    box-shadow 0.15s;
+  z-index: 5;
+}
+
+/* The native SVG icon inside the button */
+.via-radial-item svg {
+  width: 22px;
+  height: 22px;
+  color: var(--text-normal);
+  transition: color 0.15s;
+}
+
+/* When hovered or selected */
+.via-radial-item.active,
+.via-radial-item:hover {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  transform: scale(1.25) !important;
+  box-shadow: 0 0 15px var(--interactive-accent);
+}
+
+.via-radial-item.active svg,
+.via-radial-item:hover svg {
+  color: var(--text-on-accent);
+}
+
+@keyframes via-fade-in {
+  to {
+    opacity: 1;
+  }
+}

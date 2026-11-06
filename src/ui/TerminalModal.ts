@@ -465,7 +465,6 @@ export class ViaTerminalModal extends Modal {
       });
       return;
     }
-
     container.createDiv({
       text: `⚠ ${conflicts.length} conflict(s) detected:`,
       cls: 'via-status-header deleted',

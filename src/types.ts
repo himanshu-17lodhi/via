@@ -2,6 +2,7 @@ export interface ViaSettings {
   rclonePath: string;
   remoteName: string;
   remoteFolder: string;
+  autoSyncMinutes: number;
 }
 
 export type SyncStatusType =

@@ -4,4 +4,5 @@ export const DEFAULT_SETTINGS: ViaSettings = {
   rclonePath: 'rclone',
   remoteName: 'gdrive',
   remoteFolder: 'ObsidianVault',
+  autoSyncMinutes: 0, // 0 = disabled
 };

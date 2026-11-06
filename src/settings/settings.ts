@@ -26,6 +26,22 @@ export class ViaSettingTab extends PluginSettingTab {
             this.plugin.settings.rclonePath = value.trim() || 'rclone';
             await this.plugin.saveSettings();
           }),
+      )
+      .addButton((btn) =>
+        btn.setButtonText('Browse...').onClick(async () => {
+          // Electron's native file picker
+          const electron = (window as any).require('electron');
+          const dialog = electron.remote?.dialog ?? electron.dialog;
+          const result = dialog.showOpenDialogSync({
+            properties: ['openFile'],
+            filters: [{ name: 'Executables', extensions: ['exe', 'bin', '*'] }],
+          });
+          if (result && result.length > 0) {
+            this.plugin.settings.rclonePath = result[0];
+            await this.plugin.saveSettings();
+            this.display();
+          }
+        }),
       );
 
     new Setting(containerEl)
@@ -78,6 +94,28 @@ export class ViaSettingTab extends PluginSettingTab {
         }),
       );
 
+    containerEl.createEl('h3', { text: 'Auto-Sync' });
+
+    new Setting(containerEl)
+      .setName('Auto-Sync Interval')
+      .setDesc('Automatically push changes to the remote in the background.')
+      .addDropdown((drop) => {
+        drop.addOption('0', 'Disabled');
+        drop.addOption('5', 'Every 5 Minutes');
+        drop.addOption('15', 'Every 15 Minutes');
+        drop.addOption('30', 'Every 30 Minutes');
+        drop.addOption('60', 'Every 1 Hour');
+
+        drop.setValue(this.plugin.settings.autoSyncMinutes.toString());
+
+        drop.onChange(async (value) => {
+          this.plugin.settings.autoSyncMinutes = parseInt(value);
+          await this.plugin.saveSettings();
+          // Tell the plugin to restart the timer with the new interval
+          this.plugin.setupAutoSync();
+        });
+      });
+
     containerEl.createEl('h3', { text: 'Ignore Rules (.viaignore)' });
     containerEl.createEl('p', {
       text: 'Files or folders to exclude from sync. One pattern per line.',
@@ -117,5 +155,20 @@ export class ViaSettingTab extends PluginSettingTab {
           await this.plugin.ignoreEngine.load();
         });
       });
+
+    new Setting(containerEl)
+      .setName('Auto-Sync Interval')
+      .setDesc('Automatically sync every X minutes. Set to 0 to disable.')
+      .addSlider((slider) =>
+        slider
+          .setLimits(0, 60, 5)
+          .setValue(this.plugin.settings.autoSyncMinutes)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            this.plugin.settings.autoSyncMinutes = value;
+            await this.plugin.saveSettings();
+            this.plugin.setupAutoSync(); // Tell the plugin to restart the timer
+          }),
+      );
   }
 }

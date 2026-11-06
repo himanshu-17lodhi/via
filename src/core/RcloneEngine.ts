@@ -24,6 +24,11 @@ export class RcloneEngine {
     ].join(' ');
   }
 
+  async copyFile(src: string, dest: string): Promise<void> {
+    const cmd = `"${this.rclonePath}" copy "${src}" "${dest}"`;
+    await execAsync(cmd);
+  }
+
   async execute(subCommand: string, vaultPath: string): Promise<CommandResult> {
     const remote = this.getRemoteString();
     const excludes = this.getExcludes();
@@ -64,6 +69,9 @@ export class RcloneEngine {
         cmd = `"${this.rclonePath}" bisync "${vaultPath}" "${remote}" --create-empty-src-dirs --resync ${excludes} --stats-one-line`;
         break;
       case 'diff':
+        cmd = `"${this.rclonePath}" diff "${vaultPath}" "${remote}" ${excludes} --combined -`;
+        parseAsStatus = false; // Don't parse this as SyncStatus, we want raw diff
+        break;
       case 'log':
         // Use check with --combined for diff-style output
         cmd = `"${this.rclonePath}" check "${vaultPath}" "${remote}" --combined - ${excludes}`;
