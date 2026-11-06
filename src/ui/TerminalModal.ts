@@ -38,7 +38,6 @@ export class ViaTerminalModal extends Modal {
     this.buildLayout();
     this.resetTerminal();
     this.bindEvents();
-
     setTimeout(() => this.inputEl.focus(), 100);
   }
 
@@ -128,25 +127,38 @@ export class ViaTerminalModal extends Modal {
         : this.history[this.history.length - 1 - this.historyIndex];
   }
 
-  private async runCommand(sub: string) {
+  private async runCommand(sub: string, syncConfirmed = false) {
+    // 1. Handle confirmation BEFORE drawing anything to the terminal
+    if (sub === 'sync' && !syncConfirmed) {
+      new ConfirmModal(
+        this.app,
+        'Bidirectional Sync',
+        'This will merge local and remote files. Are you sure you want to proceed?',
+        false,
+        async (confirmed) => {
+          if (confirmed) await this.runCommand(sub, true);
+        },
+      ).open();
+      return;
+    }
+
     this.renderPromptBlock(sub);
     this.plugin.statusBarItem.setText(`via: executing...`);
 
     const resultBlock = this.outputEl.createDiv();
     const spinner = this.startSpinner(resultBlock);
 
+    // 2. Check the lock, and clear the spinner if it fails
     if (['push', 'pull', 'sync'].includes(sub)) {
       if (this.plugin.isBusy) {
+        clearInterval(spinner);
         resultBlock.setText(
           '⚠ Error: Another sync is currently running. Please wait.',
         );
+        this.plugin.statusBarItem.setText('via: ready');
         return;
       }
       this.plugin.isBusy = true;
-    }
-
-    if (['push', 'pull', 'sync'].includes(sub)) {
-      this.plugin.isBusy = false;
     }
 
     try {
@@ -325,6 +337,11 @@ export class ViaTerminalModal extends Modal {
       resultBlock.empty();
       resultBlock.setText(`Error: ${err.message}`);
       resultBlock.setAttr('style', 'color: var(--text-error);');
+    } finally {
+      // 3. This ALWAYS runs, ensuring the lock is released even if an error occurs
+      if (['push', 'pull', 'sync'].includes(sub)) {
+        this.plugin.isBusy = false;
+      }
     }
 
     this.outputEl.scrollTop = this.outputEl.scrollHeight;
@@ -554,13 +571,11 @@ export class ViaTerminalModal extends Modal {
       { cmd: 'via commit "msg"', desc: 'Save a snapshot of current state' },
       { cmd: 'via log', desc: 'View commit history' },
       { cmd: 'via restore <id>', desc: 'Restore vault to a previous commit' },
-      // NEW: Ignore commands
       { cmd: 'via ignore', desc: 'List all current ignore patterns' },
       { cmd: 'via ignore add <pat>', desc: 'Add a new ignore pattern' },
       { cmd: 'via ignore remove <pat>', desc: 'Remove a user ignore pattern' },
       { cmd: 'via ignore clear', desc: 'Clear all user ignore patterns' },
       { cmd: 'via ignore edit', desc: 'Open .viaignore editor' },
-
       { cmd: 'clear', desc: 'Clear the terminal screen' },
     ];
 
@@ -595,13 +610,13 @@ export class ViaTerminalModal extends Modal {
 
   private resetTerminal() {
     this.outputEl.empty();
-
     const welcome = this.outputEl.createDiv();
     welcome.createDiv({
       text: 'Via Version Control',
       cls: 'via-welcome-title',
     });
 
+    // UPDATED: Using the hasBeenSetup boolean
     if (!this.plugin.settings.hasBeenSetup) {
       const warning = welcome.createDiv();
       warning.setAttr(
