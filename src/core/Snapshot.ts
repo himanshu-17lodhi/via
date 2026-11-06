@@ -58,6 +58,24 @@ export class SnapshotEngine {
       return [];
     }
   }
+  async prune(maxCount: number = 50): Promise<void> {
+    try {
+      const commits = await this.list();
+      if (commits.length <= maxCount) return;
+
+      const toDelete = commits.slice(maxCount);
+      const list = await this.app.vault.adapter.list(SNAPSHOT_DIR);
+
+      for (const commit of toDelete) {
+        const target = list.files.find((f) => f.includes(commit.id));
+        if (target) {
+          await this.app.vault.adapter.remove(target);
+        }
+      }
+    } catch (e) {
+      console.error('Via: Failed to prune snapshots', e);
+    }
+  }
 
   async getSnapshot(id: string): Promise<ManifestData | null> {
     const list = await this.app.vault.adapter.list(SNAPSHOT_DIR);

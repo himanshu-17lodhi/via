@@ -135,7 +135,9 @@ export class ViaSettingTab extends PluginSettingTab {
         text.inputEl.style.fontFamily = 'monospace';
         text.inputEl.style.fontSize = '13px';
 
-        // 1. Load current ignore file
+        // Load from engine
+        text.setValue(this.plugin.ignoreEngine.getUserPatterns().join('\n'));
+
         this.plugin.app.vault.adapter
           .read('.viaignore')
           .then((content) => {
@@ -148,11 +150,8 @@ export class ViaSettingTab extends PluginSettingTab {
             );
           });
 
-        // 2. Save on change
         text.onChange(async (value) => {
-          await this.plugin.app.vault.adapter.write('.viaignore', value);
-          // Reload the ignore engine so the terminal uses the new rules instantly
-          await this.plugin.ignoreEngine.load();
+          await this.plugin.ignoreEngine.setUserPatterns(value.split('\n'));
         });
       });
 

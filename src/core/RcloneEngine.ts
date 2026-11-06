@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { SyncStatus, FileState } from '../types';
+import { IgnoreEngine } from './IgnoreEngine';
 
 const execAsync = promisify(exec);
 
@@ -9,6 +10,7 @@ export class RcloneEngine {
     private rclonePath: string,
     private remoteName: string,
     private remoteFolder: string,
+    private ignoreEngine: IgnoreEngine,
   ) {}
 
   private getRemoteString(): string {
@@ -16,12 +18,18 @@ export class RcloneEngine {
   }
 
   private getExcludes(): string {
-    return [
-      '--exclude ".obsidian/workspace.json"',
-      '--exclude ".obsidian/workspaces.json"',
-      '--exclude ".trash/**"',
-      '--exclude ".via/**"',
-    ].join(' ');
+    const flags: string[] = [];
+    for (const pattern of this.ignoreEngine.getPatterns()) {
+      if (pattern.endsWith('/')) {
+        flags.push(`--exclude "${pattern}**"`);
+      } else if (pattern.includes('*')) {
+        flags.push(`--exclude "${pattern}"`);
+      } else {
+        flags.push(`--exclude "/${pattern}"`);
+        flags.push(`--exclude "/${pattern}/**"`);
+      }
+    }
+    return flags.join(' ');
   }
 
   async copyFile(src: string, dest: string): Promise<void> {
@@ -70,12 +78,11 @@ export class RcloneEngine {
         break;
       case 'diff':
         cmd = `"${this.rclonePath}" diff "${vaultPath}" "${remote}" ${excludes} --combined -`;
-        parseAsStatus = false; // Don't parse this as SyncStatus, we want raw diff
+        parseAsStatus = false;
         break;
       case 'log':
-        // Use check with --combined for diff-style output
         cmd = `"${this.rclonePath}" check "${vaultPath}" "${remote}" --combined - ${excludes}`;
-        parseAsStatus = true; // Parse this as status data for the UI
+        parseAsStatus = true;
         break;
       default:
         return {
@@ -102,7 +109,6 @@ export class RcloneEngine {
           .filter((line) => !line.includes('NOTICE: gdrive'))
           .join('\n');
 
-        // Look for something like "Transferred: 12 / 12, 100%"
         const match = cleanOutput.match(
           /Transferred:\s+(\d+)\s*\/\s*\d+,\s*(\d+)%/,
         );
@@ -119,8 +125,14 @@ export class RcloneEngine {
 
       return { output: raw || 'Command executed.', exitCode: 0 };
     } catch (error: any) {
-      // rclone check exits with code 1 if differences are found.
-      // We need to handle this gracefully for diff/log.
+      if (error.code === 'ENOENT') {
+        return {
+          output:
+            '⚠ Error: rclone is not installed or not in your system PATH.\nPlease download rclone from rclone.org and configure your path in Settings > Via Sync.',
+          exitCode: 1,
+        };
+      }
+
       if ((subCommand === 'diff' || subCommand === 'log') && error.stdout) {
         return {
           output: error.stdout,
@@ -129,7 +141,17 @@ export class RcloneEngine {
         };
       }
 
-      return { output: `Error: ${error.message}`, exitCode: 1 };
+      if (
+        error.message.includes('network') ||
+        error.message.includes('connection')
+      ) {
+        return {
+          output: '⚠ Error: Cannot reach the remote. Are you offline?',
+          exitCode: 1,
+        };
+      }
+
+      return { output: `⚠ Error: ${error.message}`, exitCode: 1 };
     }
   }
 
@@ -171,13 +193,11 @@ export class RcloneEngine {
     return result;
   }
 
-  // Parses the output from `rclone check`
   private parseCheckOutput(raw: string): SyncStatus[] {
     const lines = raw.split('\n').filter((l) => l.trim() !== '');
     const result: SyncStatus[] = [];
 
     for (const line of lines) {
-      // Format: "2026/10/29 00:25:44 ERROR : .obsidian/plugins/... : md5 differ"
       if (line.includes('ERROR :')) {
         const parts = line.split('ERROR :')[1].split(':');
         const path = parts[0].trim();
@@ -188,9 +208,7 @@ export class RcloneEngine {
           path: path,
           extra: reason,
         });
-      }
-      // Format: "2026/10/29 00:25:45 NOTICE: Google drive root 'ObsidianVault': 2 differences found"
-      else if (line.includes('differences found')) {
+      } else if (line.includes('differences found')) {
         result.push({
           type: 'info',
           path: line.split('NOTICE: ')[1] || line.trim(),
@@ -205,5 +223,5 @@ export interface CommandResult {
   output: string;
   statusData?: SyncStatus[];
   exitCode: number;
-  summary?: { files: number; percentage: string }; // NEW
+  summary?: { files: number; percentage: string };
 }

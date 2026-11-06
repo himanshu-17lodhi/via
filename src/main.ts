@@ -1,4 +1,4 @@
-import { Plugin, FileSystemAdapter, Notice } from 'obsidian'; // <-- Added Notice
+import { Plugin, FileSystemAdapter, Notice, Menu, setIcon } from 'obsidian';
 import { RcloneEngine } from './core/RcloneEngine';
 import { Manifest } from './core/Manifest';
 import { StatusEngine } from './core/StatusEngine';
@@ -26,7 +26,18 @@ export default class ViaPlugin extends Plugin {
   private autoSyncIntervalId: number | null = null;
 
   async onload() {
+    console.log('Via: Plugin loaded.');
+
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+    if (!this.settings.hasBeenSetup) {
+      new Notice(
+        'Welcome to Via! Please open Settings > Via Sync to configure your rclone path and remote.',
+        10000,
+      );
+      this.settings.hasBeenSetup = true;
+      await this.saveSettings();
+    }
 
     const adapter = this.app.vault.adapter;
     if (!(adapter instanceof FileSystemAdapter)) {
@@ -34,6 +45,7 @@ export default class ViaPlugin extends Plugin {
       return;
     }
 
+    // Init Engines
     this.viaManifest = new Manifest(this.app);
     await this.viaManifest.load();
 
@@ -44,6 +56,7 @@ export default class ViaPlugin extends Plugin {
       this.settings.rclonePath,
       this.settings.remoteName,
       this.settings.remoteFolder,
+      this.ignoreEngine,
     );
 
     this.statusEngine = new StatusEngine(
@@ -59,21 +72,81 @@ export default class ViaPlugin extends Plugin {
       this.rcloneEngine,
     );
 
+    // Setup Status Bar
     this.statusBarItem = this.addStatusBarItem();
-
     this.statusBarItem.setText('via: ready');
 
-    this.statusBarItem.onclick = () =>
-      (this.app as any).commands.executeCommandById('via:via-open-terminal');
+    // Left-click opens the terminal directly
+    this.statusBarItem.onclick = () => this.openTerminal();
 
+    // Right-click opens the quick actions menu
+    this.statusBarItem.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const menu = new Menu();
+
+      menu.addItem((item) =>
+        item
+          .setTitle('Open Via Terminal')
+          .setIcon('terminal')
+          .onClick(() => this.openTerminal()),
+      );
+
+      menu.addSeparator();
+
+      menu.addItem((item) =>
+        item
+          .setTitle('Pull from Remote')
+          .setIcon('arrow-down-to-line')
+          .onClick(async () => {
+            new Notice('Via: Pulling...');
+            await this.rcloneEngine.execute('pull', this.getVaultPath());
+            await this.statusEngine.updateManifestFromLocal();
+            new Notice('Via: Pull complete.');
+          }),
+      );
+
+      menu.addItem((item) =>
+        item
+          .setTitle('Push to Remote')
+          .setIcon('arrow-up-from-line')
+          .onClick(async () => {
+            new Notice('Via: Pushing...');
+            await this.rcloneEngine.execute('push', this.getVaultPath());
+            await this.statusEngine.updateManifestFromLocal();
+            new Notice('Via: Push complete.');
+          }),
+      );
+
+      menu.addItem((item) =>
+        item
+          .setTitle('Save Snapshot (Commit)')
+          .setIcon('save')
+          .onClick(async () => {
+            await this.snapshotEngine.commit(
+              'Quick manual snapshot from status bar',
+              this.viaManifest.data,
+            );
+            new Notice('Via: Snapshot saved.');
+          }),
+      );
+
+      menu.showAtMouseEvent(e);
+    });
+
+    // Background check timer
     this.registerInterval(
       window.setInterval(async () => {
         const changes = await this.statusEngine.compute();
-        this.statusBarItem.setText(
-          changes.length === 0
-            ? 'via: ✓ clean'
-            : `via: ${changes.length} changes`,
-        );
+
+        // Fixed: Dynamic status bar icon + text
+        this.statusBarItem.empty();
+        if (changes.length === 0) {
+          const icon = this.statusBarItem.createSpan();
+          setIcon(icon, 'check-circle');
+          this.statusBarItem.createSpan({ text: ' via: clean' });
+        } else {
+          this.statusBarItem.setText(`via: ${changes.length} changes`);
+        }
       }, 30000),
     );
 
@@ -97,7 +170,6 @@ export default class ViaPlugin extends Plugin {
 
     this.addSettingTab(new ViaSettingTab(this.app, this));
 
-    // ADDED: Actually start the auto-sync timer when the plugin loads
     this.setupAutoSync();
   }
 
@@ -118,22 +190,18 @@ export default class ViaPlugin extends Plugin {
   }
 
   public setupAutoSync() {
-    // 1. Clear existing timer if there is one
     if (this.autoSyncIntervalId) {
       window.clearInterval(this.autoSyncIntervalId);
       this.autoSyncIntervalId = null;
     }
 
-    // 2. If enabled (> 0), start a new timer
     if (this.settings.autoSyncMinutes > 0) {
       const intervalMs = this.settings.autoSyncMinutes * 60 * 1000;
 
       this.autoSyncIntervalId = window.setInterval(async () => {
-        // Don't sync if a manual sync is already running
         if (this.isBusy) return;
 
         try {
-          // Check if there are actually changes before running rclone
           const changes = await this.statusEngine.compute();
 
           if (changes.length > 0) {
@@ -142,7 +210,6 @@ export default class ViaPlugin extends Plugin {
             );
             this.isBusy = true;
 
-            // Run the push
             await this.rcloneEngine.execute('push', this.getVaultPath());
             await this.statusEngine.updateManifestFromLocal();
 
@@ -168,7 +235,6 @@ export default class ViaPlugin extends Plugin {
   }
 
   onunload() {
-    // CRITICAL: Stop the timer when plugin is disabled to prevent memory leaks
     if (this.autoSyncIntervalId) {
       window.clearInterval(this.autoSyncIntervalId);
     }

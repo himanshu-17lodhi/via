@@ -1,4 +1,5 @@
 export interface ViaSettings {
+  hasBeenSetup: boolean;
   rclonePath: string;
   remoteName: string;
   remoteFolder: string;
@@ -6,11 +7,7 @@ export interface ViaSettings {
 }
 
 export type SyncStatusType =
-  | 'added'
-  | 'deleted'
-  | 'modified'
-  | 'error'
-  | 'info';
+  'added' | 'deleted' | 'modified' | 'error' | 'info';
 
 export interface SyncStatus {
   type: SyncStatusType;

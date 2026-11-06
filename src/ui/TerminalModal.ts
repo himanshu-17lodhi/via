@@ -4,6 +4,7 @@ import { StatusEngine } from '../core/StatusEngine';
 import ViaPlugin from '../main';
 import { SyncStatus, Commit, ConflictResult } from '../types';
 import { ConfirmModal } from './ConfirmModal';
+import { IgnoreEditorModal } from './IgnoreEditorModal';
 
 export class ViaTerminalModal extends Modal {
   private container!: HTMLElement;
@@ -37,6 +38,8 @@ export class ViaTerminalModal extends Modal {
     this.buildLayout();
     this.resetTerminal();
     this.bindEvents();
+
+    setTimeout(() => this.inputEl.focus(), 100);
   }
 
   private buildLayout() {
@@ -45,9 +48,7 @@ export class ViaTerminalModal extends Modal {
     });
     this.applyWindowSize();
 
-    // Header
     const header = this.container.createDiv({ cls: 'via-terminal-header' });
-
     const dots = header.createDiv({ cls: 'via-terminal-dots' });
     this.createDot(dots, 'close', () => this.close());
     this.createDot(dots, 'reset', () => this.resetTerminal());
@@ -57,12 +58,10 @@ export class ViaTerminalModal extends Modal {
     });
 
     header.createDiv({ text: 'Via Terminal', cls: 'via-terminal-title' });
-    header.createDiv().setAttr('style', 'width: 46px;'); // Spacer
+    header.createDiv().setAttr('style', 'width: 46px;');
 
-    // Output area
     this.outputEl = this.container.createDiv({ cls: 'via-terminal-output' });
 
-    // Input area
     const inputSection = this.container.createDiv({
       cls: 'via-terminal-input-section',
     });
@@ -77,7 +76,6 @@ export class ViaTerminalModal extends Modal {
       cls: 'via-terminal-input',
     });
 
-    // Footer
     const footer = inputSection.createDiv({ cls: 'via-terminal-footer' });
     footer.createSpan({ text: '● Local', cls: 'via-footer-local' });
     footer.createSpan({ text: '⟷', cls: 'via-footer-arrow' });
@@ -113,6 +111,10 @@ export class ViaTerminalModal extends Modal {
       const sub = raw.replace(/^via\s+/i, '');
       await this.runCommand(sub);
     });
+
+    this.container.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.close();
+    });
   }
 
   private historyNavigate(dir: number, e: KeyboardEvent) {
@@ -133,7 +135,30 @@ export class ViaTerminalModal extends Modal {
     const resultBlock = this.outputEl.createDiv();
     const spinner = this.startSpinner(resultBlock);
 
+    if (['push', 'pull', 'sync'].includes(sub)) {
+      if (this.plugin.isBusy) {
+        resultBlock.setText(
+          '⚠ Error: Another sync is currently running. Please wait.',
+        );
+        return;
+      }
+      this.plugin.isBusy = true;
+    }
+
+    if (['push', 'pull', 'sync'].includes(sub)) {
+      this.plugin.isBusy = false;
+    }
+
     try {
+      if (sub === 'ignore' || sub.startsWith('ignore ')) {
+        clearInterval(spinner);
+        resultBlock.empty();
+        await this.handleIgnore(sub.replace(/^ignore\s*/, ''), resultBlock);
+        this.outputEl.scrollTop = this.outputEl.scrollHeight;
+        this.plugin.statusBarItem.setText('via: ready');
+        return;
+      }
+
       if (sub.startsWith('commit')) {
         const message = sub
           .replace('commit', '')
@@ -431,7 +456,7 @@ export class ViaTerminalModal extends Modal {
     });
 
     for (const commit of commits) {
-      const entry = container.createDiv({ cls: 'via-conflict-card' }); // Reusing some styling
+      const entry = container.createDiv({ cls: 'via-conflict-card' });
       entry.setAttr(
         'style',
         'border-left-color: var(--interactive-accent); background: var(--background-secondary); margin-bottom: 16px;',
@@ -529,6 +554,13 @@ export class ViaTerminalModal extends Modal {
       { cmd: 'via commit "msg"', desc: 'Save a snapshot of current state' },
       { cmd: 'via log', desc: 'View commit history' },
       { cmd: 'via restore <id>', desc: 'Restore vault to a previous commit' },
+      // NEW: Ignore commands
+      { cmd: 'via ignore', desc: 'List all current ignore patterns' },
+      { cmd: 'via ignore add <pat>', desc: 'Add a new ignore pattern' },
+      { cmd: 'via ignore remove <pat>', desc: 'Remove a user ignore pattern' },
+      { cmd: 'via ignore clear', desc: 'Clear all user ignore patterns' },
+      { cmd: 'via ignore edit', desc: 'Open .viaignore editor' },
+
       { cmd: 'clear', desc: 'Clear the terminal screen' },
     ];
 
@@ -563,11 +595,21 @@ export class ViaTerminalModal extends Modal {
 
   private resetTerminal() {
     this.outputEl.empty();
+
     const welcome = this.outputEl.createDiv();
     welcome.createDiv({
       text: 'Via Version Control',
       cls: 'via-welcome-title',
     });
+
+    if (!this.plugin.settings.hasBeenSetup) {
+      const warning = welcome.createDiv();
+      warning.setAttr(
+        'style',
+        'color: var(--text-error); margin-top: 12px; font-size: 13px;',
+      );
+      warning.innerHTML = `⚠ <b>Setup Required:</b> Please go to Settings > Via Sync to configure your rclone path.`;
+    }
 
     const createCheckLine = (text: string, highlight?: string) => {
       const line = welcome.createDiv({ cls: 'via-welcome-line' });
@@ -591,6 +633,110 @@ export class ViaTerminalModal extends Modal {
       'margin-top: 16px; color: var(--text-muted); font-size: 12px;',
     );
     hint.innerHTML = `Type <span style="color: var(--text-normal); background: var(--background-secondary); padding: 3px 8px; border-radius: 6px; font-family: var(--font-monospace); font-weight: 500; border: 1px solid var(--background-modifier-border);">via help</span>`;
+  }
+
+  private async handleIgnore(
+    args: string,
+    container: HTMLElement,
+  ): Promise<void> {
+    const engine = this.plugin.ignoreEngine;
+    const [cmd, ...rest] = args.trim().split(/\s+/);
+    const arg = rest.join(' ').trim();
+
+    const ok = (t: string) => {
+      const e = container.createDiv({ text: `✓ ${t}` });
+      e.style.color = 'var(--text-success)';
+      e.style.fontSize = '13px';
+      e.style.margin = '4px 0';
+    };
+    const err = (t: string) => {
+      const e = container.createDiv({ text: `✗ ${t}` });
+      e.style.color = 'var(--text-error)';
+      e.style.fontSize = '13px';
+      e.style.margin = '4px 0';
+    };
+    const sec = (t: string, color: string) => {
+      const e = container.createDiv({ text: t });
+      e.style.color = color;
+      e.style.fontSize = '11px';
+      e.style.marginTop = '10px';
+      e.style.textTransform = 'uppercase';
+      e.style.letterSpacing = '0.5px';
+    };
+
+    if (!cmd) {
+      sec('Built-in (always active)', 'var(--text-muted)');
+      for (const p of engine.getDefaults()) {
+        const row = container.createDiv({ cls: 'via-file-row' });
+        row.createSpan({ text: '•', cls: 'via-file-icon deleted' });
+        row.createSpan({ text: p, cls: 'via-file-text' });
+      }
+
+      sec('User patterns (.viaignore)', 'var(--interactive-accent)');
+      const users = engine.getUserPatterns();
+      if (!users.length) {
+        const e = container.createDiv({ text: '(none)' });
+        e.style.color = 'var(--text-faint)';
+        e.style.fontStyle = 'italic';
+        e.style.fontSize = '12px';
+      } else {
+        for (const p of users) {
+          const row = container.createDiv({ cls: 'via-file-row' });
+          row.createSpan({ text: '•', cls: 'via-file-icon deleted' });
+          row.createSpan({ text: p, cls: 'via-file-text' });
+        }
+      }
+      const hint = container.createDiv();
+      hint.style.cssText =
+        'margin-top:14px;color:var(--text-muted);font-size:12px;';
+      hint.innerHTML =
+        'Add: <code>via ignore add pattern</code> · Remove: <code>via ignore remove pattern</code> · Edit: <code>via ignore edit</code>';
+      return;
+    }
+
+    if (cmd === 'add') {
+      if (!arg) return err('Usage: via ignore add <pattern>');
+      const added = await engine.addPattern(arg);
+      return added
+        ? ok(`Added: ${arg}`)
+        : err(`Already exists or invalid: ${arg}`);
+    }
+
+    if (cmd === 'remove' || cmd === 'rm') {
+      if (!arg) return err('Usage: via ignore remove <pattern>');
+      const removed = await engine.removePattern(arg);
+      return removed
+        ? ok(`Removed: ${arg}`)
+        : err(`Not found in user patterns: ${arg}`);
+    }
+
+    if (cmd === 'clear') {
+      new ConfirmModal(
+        this.app,
+        'Clear Ignore Rules',
+        'Remove all user patterns from .viaignore? Built-in defaults stay.',
+        true,
+        async (confirmed) => {
+          container.empty();
+          if (!confirmed) {
+            const c = container.createDiv({ text: 'Cancelled.' });
+            c.style.color = 'var(--text-muted)';
+            c.style.fontStyle = 'italic';
+            return;
+          }
+          await engine.clearUserPatterns();
+          ok('Cleared all user ignore patterns.');
+        },
+      ).open();
+      return;
+    }
+
+    if (cmd === 'edit') {
+      new IgnoreEditorModal(this.app, engine).open();
+      return;
+    }
+
+    err(`Unknown ignore subcommand: ${cmd}`);
   }
 
   onClose() {
