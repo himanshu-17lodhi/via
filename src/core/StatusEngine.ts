@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import { Manifest } from './Manifest';
 import { IgnoreEngine } from './IgnoreEngine';
-import { SyncStatus } from '../types';
+import { SyncStatus } from '../settings/types';
 
 export class StatusEngine {
   constructor(

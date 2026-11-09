@@ -2,7 +2,7 @@ import { App, Modal, Notice } from 'obsidian';
 import { RcloneEngine } from '../core/RcloneEngine';
 import { StatusEngine } from '../core/StatusEngine';
 import ViaPlugin from '../main';
-import { SyncStatus, Commit, ConflictResult } from '../types';
+import { SyncStatus, Commit, ConflictResult } from '../settings/types';
 import { ConfirmModal } from './ConfirmModal';
 import { IgnoreEditorModal } from './IgnoreEditorModal';
 
@@ -79,7 +79,7 @@ export class ViaTerminalModal extends Modal {
     footer.createSpan({ text: '● Local', cls: 'via-footer-local' });
     footer.createSpan({ text: '⟷', cls: 'via-footer-arrow' });
     footer.createSpan({
-      text: `${this.plugin.settings.remoteName}/${this.plugin.settings.remoteFolder}`,
+      text: `${this.plugin.settings.remoteName}: ${this.plugin.settings.remoteFolder}`,
       cls: 'via-footer-remote',
     });
   }

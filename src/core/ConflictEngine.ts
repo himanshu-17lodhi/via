@@ -1,6 +1,6 @@
 import { Manifest } from './Manifest';
 import { RcloneEngine } from './RcloneEngine';
-import { ConflictResult } from '../types';
+import { ConflictResult } from '../settings/types';
 
 export class ConflictEngine {
   constructor(

@@ -1,13 +1,13 @@
 export interface ViaSettings {
   hasBeenSetup: boolean;
   rclonePath: string;
+  rcloneConfigPath: string;
   remoteName: string;
   remoteFolder: string;
   autoSyncMinutes: number;
 }
 
-export type SyncStatusType =
-  'added' | 'deleted' | 'modified' | 'error' | 'info';
+export type SyncStatusType = 'added' | 'deleted' | 'modified' | 'error' | 'info';
 
 export interface SyncStatus {
   type: SyncStatusType;
@@ -32,6 +32,10 @@ export interface CommandResult {
   output: string;
   statusData?: SyncStatus[];
   exitCode: number;
+  summary?: {
+    files: number;
+    percent: string;
+  };
 }
 
 export interface Commit {
@@ -47,13 +51,4 @@ export interface ConflictResult {
   remoteMtime: number;
   lastSyncedMtime: number;
   reason: string;
-}
-export interface CommandResult {
-  output: string;
-  statusData?: SyncStatus[];
-  exitCode: number;
-  summary?: {
-    files: number;
-    percent: string;
-  };
 }

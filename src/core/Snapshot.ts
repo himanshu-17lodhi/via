@@ -1,5 +1,5 @@
 import { App, normalizePath } from 'obsidian';
-import { ManifestData, Commit } from '../types';
+import { ManifestData, Commit } from '../settings/types';
 
 const SNAPSHOT_DIR = normalizePath('.via/snapshots');
 

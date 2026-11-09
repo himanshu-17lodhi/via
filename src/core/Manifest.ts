@@ -1,5 +1,5 @@
 import { App, normalizePath } from 'obsidian';
-import { ManifestData, FileState } from '../types';
+import { ManifestData, FileState } from '../settings/types';
 
 const MANIFEST_PATH = normalizePath('.via/manifest.json');
 const VIA_DIR = normalizePath('.via');

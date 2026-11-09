@@ -1,9 +1,10 @@
-import { ViaSettings } from '../types';
+import { ViaSettings } from './types';
 
 export const DEFAULT_SETTINGS: ViaSettings = {
+  hasBeenSetup: false,
   rclonePath: 'rclone',
-  remoteName: 'gdrive',
+  rcloneConfigPath: '', 
+  remoteName: 'via rclone', 
   remoteFolder: 'ObsidianVault',
   autoSyncMinutes: 0,
-  hasBeenSetup: false,
 };

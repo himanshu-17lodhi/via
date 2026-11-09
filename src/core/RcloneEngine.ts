@@ -1,20 +1,32 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { SyncStatus, FileState } from '../types';
+import { SyncStatus, FileState, CommandResult } from '../settings/types';
 import { IgnoreEngine } from './IgnoreEngine';
+import ViaPlugin from '../main';
 
 const execAsync = promisify(exec);
 
 export class RcloneEngine {
   constructor(
-    private rclonePath: string,
-    private remoteName: string,
-    private remoteFolder: string,
+    private plugin: ViaPlugin,
     private ignoreEngine: IgnoreEngine,
   ) {}
 
+  private getBaseCommand(): string {
+    const rcloneExe = this.plugin.settings.rclonePath || 'rclone';
+    const configPath = this.plugin.settings.rcloneConfigPath;
+
+    let cmd = `"${rcloneExe}"`;
+    if (configPath && configPath.trim() !== '') {
+      cmd += ` --config "${configPath.trim()}"`;
+    }
+    return cmd;
+  }
+
   private getRemoteString(): string {
-    return `${this.remoteName}:${this.remoteFolder}`;
+    const remote = this.plugin.settings.remoteName || 'via rclone';
+    const folder = this.plugin.settings.remoteFolder || 'ObsidianVault';
+    return `${remote}:${folder}`;
   }
 
   private getExcludes(): string {
@@ -32,63 +44,33 @@ export class RcloneEngine {
     return flags.join(' ');
   }
 
-  async copyFile(src: string, dest: string): Promise<void> {
-    const cmd = `"${this.rclonePath}" copy "${src}" "${dest}"`;
-    await execAsync(cmd);
-  }
-
   async execute(subCommand: string, vaultPath: string): Promise<CommandResult> {
     const remote = this.getRemoteString();
     const excludes = this.getExcludes();
+    const baseCmd = this.getBaseCommand();
     let cmd = '';
     let parseAsStatus = false;
 
     if (subCommand === 'help') {
-      return {
-        output: [
-          'Available Via Commands:',
-          '  via status        - Check local changes instantly (no network)',
-          '  via conflicts     - Detect conflicts before pushing',
-          '  via diff          - Show exact file changes between local & remote',
-          '  via push          - Upload local changes to the remote',
-          '  via pull          - Download remote changes to local',
-          '  via sync          - Bidirectional merge (resolves conflicts)',
-          '  via commit "msg"  - Save a snapshot of current state',
-          '  via log           - View commit history',
-          '  via help          - Show this menu',
-          '  clear             - Clear the terminal screen',
-        ].join('\n'),
-        exitCode: 0,
-      };
+      return { output: 'Available commands: pull, push, sync, status', exitCode: 0 };
     }
 
     switch (subCommand) {
       case 'status':
-        cmd = `"${this.rclonePath}" sync "${vaultPath}" "${remote}" --dry-run --combined - ${excludes}`;
+        cmd = `${baseCmd} sync "${vaultPath}" "${remote}" --dry-run --combined - ${excludes}`;
         parseAsStatus = true;
         break;
       case 'push':
-        cmd = `"${this.rclonePath}" sync "${vaultPath}" "${remote}" ${excludes} --stats-one-line`;
+        cmd = `${baseCmd} sync "${vaultPath}" "${remote}" ${excludes} --stats-one-line`;
         break;
       case 'pull':
-        cmd = `"${this.rclonePath}" sync "${remote}" "${vaultPath}" ${excludes} --stats-one-line`;
+        cmd = `${baseCmd} sync "${remote}" "${vaultPath}" ${excludes} --stats-one-line`;
         break;
       case 'sync':
-        cmd = `"${this.rclonePath}" bisync "${vaultPath}" "${remote}" --create-empty-src-dirs --resync ${excludes} --stats-one-line`;
-        break;
-      case 'diff':
-        cmd = `"${this.rclonePath}" diff "${vaultPath}" "${remote}" ${excludes} --combined -`;
-        parseAsStatus = false;
-        break;
-      case 'log':
-        cmd = `"${this.rclonePath}" check "${vaultPath}" "${remote}" --combined - ${excludes}`;
-        parseAsStatus = true;
+        cmd = `${baseCmd} bisync "${vaultPath}" "${remote}" --create-empty-src-dirs --resync ${excludes} --stats-one-line`;
         break;
       default:
-        return {
-          output: `via: '${subCommand}' is not a command. See 'via help'.`,
-          exitCode: 1,
-        };
+        return { output: `via: '${subCommand}' is not a command.`, exitCode: 1 };
     }
 
     try {
@@ -96,74 +78,37 @@ export class RcloneEngine {
       const raw = stdout || stderr;
 
       if (parseAsStatus) {
-        return {
-          output: raw,
-          statusData: this.parseCheckOutput(raw),
-          exitCode: 0,
-        };
+        return { output: raw, statusData: this.parseStatusOutput(raw), exitCode: 0 };
       }
 
       if (['push', 'pull', 'sync'].includes(subCommand)) {
-        const cleanOutput = raw
-          .split('\n')
-          .filter((line) => !line.includes('NOTICE: gdrive'))
-          .join('\n');
-
-        const match = cleanOutput.match(
-          /Transferred:\s+(\d+)\s*\/\s*\d+,\s*(\d+)%/,
-        );
-
+        const match = raw.match(/Transferred:\s+(\d+)\s*\/\s*\d+,\s*(\d+)%/);
         return {
-          output: cleanOutput,
+          output: raw,
           exitCode: 0,
           summary: {
             files: match ? parseInt(match[1]) : 0,
-            percentage: match ? `${match[2]}%` : '0%',
+            percent: match ? `${match[2]}%` : '0%',
           },
         };
       }
-
       return { output: raw || 'Command executed.', exitCode: 0 };
     } catch (error: any) {
       if (error.code === 'ENOENT') {
-        return {
-          output:
-            '⚠ Error: rclone is not installed or not in your system PATH.\nPlease download rclone from rclone.org and configure your path in Settings > Via Sync.',
-          exitCode: 1,
-        };
+        return { output: '⚠ Error: rclone is not installed or not in your PATH.', exitCode: 1 };
       }
-
-      if ((subCommand === 'diff' || subCommand === 'log') && error.stdout) {
-        return {
-          output: error.stdout,
-          statusData: this.parseCheckOutput(error.stdout),
-          exitCode: 0, // Treat as success for UI rendering
-        };
+      if (error.message.includes("didn't find section in config file")) {
+        return { output: `⚠ Error: Rclone could not find the remote "${this.plugin.settings.remoteName}". Please check your Settings.`, exitCode: 1 };
       }
-
-      if (
-        error.message.includes('network') ||
-        error.message.includes('connection')
-      ) {
-        return {
-          output: '⚠ Error: Cannot reach the remote. Are you offline?',
-          exitCode: 1,
-        };
-      }
-
       return { output: `⚠ Error: ${error.message}`, exitCode: 1 };
     }
   }
 
   async fetchRemoteState(): Promise<Record<string, FileState>> {
     const remote = this.getRemoteString();
-    const cmd = `"${this.rclonePath}" lsjson "${remote}" --recursive --files-only`;
+    const cmd = `${this.getBaseCommand()} lsjson "${remote}" --recursive --files-only`;
     const { stdout } = await execAsync(cmd);
-    const files = JSON.parse(stdout) as Array<{
-      Path: string;
-      Size: number;
-      ModTime: string;
-    }>;
+    const files = JSON.parse(stdout) as Array<{ Path: string; Size: number; ModTime: string }>;
     const result: Record<string, FileState> = {};
     for (const file of files) {
       result[file.Path] = {
@@ -178,50 +123,12 @@ export class RcloneEngine {
   private parseStatusOutput(raw: string): SyncStatus[] {
     const lines = raw.split('\n').filter((l) => l.trim() !== '');
     const result: SyncStatus[] = [];
-
     for (const line of lines) {
-      if (line.startsWith('+ ')) {
-        result.push({ type: 'added', path: line.substring(2).trim() });
-      } else if (line.startsWith('- ')) {
-        result.push({ type: 'deleted', path: line.substring(2).trim() });
-      } else if (line.startsWith('* ')) {
-        result.push({ type: 'modified', path: line.substring(2).trim() });
-      } else if (line.startsWith('! ')) {
-        result.push({ type: 'error', path: line.substring(2).trim() });
-      }
+      if (line.startsWith('+ ')) result.push({ type: 'added', path: line.substring(2).trim() });
+      else if (line.startsWith('- ')) result.push({ type: 'deleted', path: line.substring(2).trim() });
+      else if (line.startsWith('* ')) result.push({ type: 'modified', path: line.substring(2).trim() });
+      else if (line.startsWith('! ')) result.push({ type: 'error', path: line.substring(2).trim() });
     }
     return result;
   }
-
-  private parseCheckOutput(raw: string): SyncStatus[] {
-    const lines = raw.split('\n').filter((l) => l.trim() !== '');
-    const result: SyncStatus[] = [];
-
-    for (const line of lines) {
-      if (line.includes('ERROR :')) {
-        const parts = line.split('ERROR :')[1].split(':');
-        const path = parts[0].trim();
-        const reason = parts.slice(1).join(':').trim();
-
-        result.push({
-          type: 'modified',
-          path: path,
-          extra: reason,
-        });
-      } else if (line.includes('differences found')) {
-        result.push({
-          type: 'info',
-          path: line.split('NOTICE: ')[1] || line.trim(),
-        });
-      }
-    }
-    return result;
-  }
-}
-
-export interface CommandResult {
-  output: string;
-  statusData?: SyncStatus[];
-  exitCode: number;
-  summary?: { files: number; percentage: string };
 }
