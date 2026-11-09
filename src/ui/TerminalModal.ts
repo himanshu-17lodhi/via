@@ -148,7 +148,6 @@ export class ViaTerminalModal extends Modal {
     const resultBlock = this.outputEl.createDiv();
     const spinner = this.startSpinner(resultBlock);
 
-    // 2. Check the lock, and clear the spinner if it fails
     if (['push', 'pull', 'sync'].includes(sub)) {
       if (this.plugin.isBusy) {
         clearInterval(spinner);
@@ -338,7 +337,6 @@ export class ViaTerminalModal extends Modal {
       resultBlock.setText(`Error: ${err.message}`);
       resultBlock.setAttr('style', 'color: var(--text-error);');
     } finally {
-      // 3. This ALWAYS runs, ensuring the lock is released even if an error occurs
       if (['push', 'pull', 'sync'].includes(sub)) {
         this.plugin.isBusy = false;
       }

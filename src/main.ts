@@ -28,7 +28,10 @@ export default class ViaPlugin extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
     if (!this.settings.hasBeenSetup) {
-      new Notice('Welcome to Via! Please open Settings > Via Sync to configure your rclone path.', 10000);
+      new Notice(
+        'Welcome to Via! Please open Settings > Via Sync to configure your rclone path.',
+        10000,
+      );
       this.settings.hasBeenSetup = true;
       await this.saveSettings();
     }
@@ -44,20 +47,41 @@ export default class ViaPlugin extends Plugin {
 
     this.rcloneEngine = new RcloneEngine(this, this.ignoreEngine);
 
-    this.statusEngine = new StatusEngine(this.app, this.viaManifest, this.ignoreEngine);
+    this.statusEngine = new StatusEngine(
+      this.app,
+      this.viaManifest,
+      this.ignoreEngine,
+    );
     this.snapshotEngine = new SnapshotEngine(this.app);
-    this.conflictEngine = new ConflictEngine(this.viaManifest, this.rcloneEngine);
+    this.conflictEngine = new ConflictEngine(
+      this.viaManifest,
+      this.rcloneEngine,
+    );
 
     this.statusBarItem = this.addStatusBarItem();
     this.statusBarItem.setText('via: ready');
     this.statusBarItem.onclick = () => this.openTerminal();
-    
-    this.addRibbonIcon('git-branch', 'Open Via Terminal', () => this.openTerminal());
-    
+
+    this.addRibbonIcon('git-branch', 'Open Via Terminal', () =>
+      this.openTerminal(),
+    );
+
     this.addCommand({
       id: 'via-open-terminal',
       name: 'Open Via Terminal',
       callback: () => this.openTerminal(),
+    });
+
+    this.addCommand({
+      id: 'via-commit',
+      name: 'Commit Snapshot',
+      callback: async () => {
+        const message = await prompt('Commit message:');
+        if (message) {
+          await this.snapshotEngine.commit(message, this.viaManifest.data);
+          new Notice('Via: Snapshot saved.');
+        }
+      },
     });
 
     this.addSettingTab(new ViaSettingTab(this.app, this));

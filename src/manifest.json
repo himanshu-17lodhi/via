@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "minAppVersion": "1.0.0",
   "description": "A lightweight, terminal-based version control and sync engine powered by rclone.",
-  "author": "Your Name",
+  "author": "Himanshu Lodhi",
   "authorUrl": "https://github.com/himanshu-17lodhi",
   "isDesktopOnly": true
 }

@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import ViaPlugin from '../main';
 import { setupFileBrowser, testRcloneConnection } from './helpers';
+import { renderSetupGuide } from './Guide';
 
 export class ViaSettingTab extends PluginSettingTab {
   plugin: ViaPlugin;
@@ -15,6 +16,9 @@ export class ViaSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.createEl('h2', { text: 'Via Sync Setup' });
 
+
+    renderSetupGuide(containerEl);
+    
     new Setting(containerEl)
       .setName('Rclone Config File Path')
       .setDesc('Absolute path to rclone.conf. Crucial for Windows.')
